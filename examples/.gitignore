@@ -1,0 +1,5 @@
+tmp/
+# Generated SQLite migrations (source is postgres/)
+migrations/sqlite3/
+# Config file (copy config.json.example to config.json)
+config.json

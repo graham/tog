@@ -1,0 +1,22 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/examples ."
+  entrypoint = ["./tmp/examples", "serve"]
+  include_ext = ["go", "html", "css", "js"]
+  include_dir = [".", "routes", "../db", "../web", "../tools"]
+  exclude_dir = ["tmp", "docs", "migrations"]
+  delay = 500
+
+[log]
+  time = false
+
+[color]
+  main = "green"
+  watcher = "cyan"
+  build = "yellow"
+  runner = "magenta"
+
+[misc]
+  clean_on_exit = true

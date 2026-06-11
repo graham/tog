@@ -1,0 +1,38 @@
+# Build output
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries and coverage
+*.test
+*.out
+coverage.html
+
+# Generated documentation
+**/docs/tests.html
+
+# Database files
+*.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Environment
+.env
+.env.local
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Local session artifacts
+.session.json
+.othersession.json

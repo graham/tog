@@ -1,0 +1,16 @@
+# Items API Tests
+
+/dev/create_and_assume?email=items_test@example.com
+?assert status 200
+
+POST /api/items/ {"name":"Test Widget","description":"A test item","price":19.99}
+?assert status 201
+?assert json .message "item created"
+
+POST /api/items/ {"name":"Second Item","description":"Another item","price":5.5}
+?assert status 201
+
+GET /api/items/
+?assert status 200
+?assert body "Test Widget"
+?assert body "Second Item"

@@ -1,0 +1,11 @@
+# Health Check Tests
+# Verifies the health endpoint returns expected responses
+
+/health
+?assert status 200
+?assert json .status "healthy"
+
+# Root endpoint should return ok
+/
+?assert status 200
+?assert body ok

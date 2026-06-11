@@ -1,0 +1,21 @@
+# Dev Authentication Tests
+# Tests the /dev/create_and_assume endpoint
+
+/dev/create_and_assume?email=devtest@example.com
+?assert status 200
+?assert json .email "devtest@example.com"
+?assert json .message "session created"
+
+/auth/whoami
+?assert status 200
+?assert json .authenticated true
+?assert json .email "devtest@example.com"
+?assert json .is_admin false
+
+/dev/create_and_assume?email=another@example.com
+?assert status 200
+?assert json .email "another@example.com"
+
+/auth/whoami
+?assert status 200
+?assert json .email "another@example.com"

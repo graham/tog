@@ -1,0 +1,8 @@
+# Health Check Tests
+/health
+?assert status 200
+?assert json .status "healthy"
+
+/
+?assert status 200
+?assert body ok

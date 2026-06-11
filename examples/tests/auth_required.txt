@@ -1,0 +1,31 @@
+# Authentication Tests
+# Tests authentication state and session management
+# Run with: go run main.go inlinetest -f inline_tests/auth_required.txt
+
+# Without authentication, whoami returns authenticated: false
+/auth/whoami
+?assert status 200
+?assert json .authenticated false
+
+# Public items endpoint should work without auth
+GET /api/noauth/items/
+?assert status 200
+
+# Now authenticate
+/dev/create_and_assume?email=authtest@example.com
+?assert status 200
+
+# With authentication, whoami should show authenticated: true
+/auth/whoami
+?assert status 200
+?assert json .authenticated true
+?assert json .email "authtest@example.com"
+
+# Logout should clear the session
+POST /auth/logout
+?assert status 200
+
+# After logout, whoami should show authenticated: false
+/auth/whoami
+?assert status 200
+?assert json .authenticated false

@@ -1,0 +1,35 @@
+# Items API Tests
+# Tests item creation and listing
+# Note: Items are owned by the authenticated user
+
+# First authenticate via dev endpoint
+/dev/create_and_assume?email=crud_test@example.com
+?assert status 200
+?assert json .email "crud_test@example.com"
+
+# List items (should be empty initially for this user)
+GET /api/items/
+?assert status 200
+
+# Create a new item
+POST /api/items/ {"name":"Test Widget","description":"A test item","price":19.99}
+?assert status 201
+?assert json .message "item created"
+
+# Create a second item
+POST /api/items/ {"name":"Second Item","description":"Another item","price":5.50}
+?assert status 201
+?assert json .message "item created"
+
+# List items - should show both items we created
+GET /api/items/
+?assert status 200
+?assert body "Test Widget"
+?assert body "Second Item"
+?assert body "19.99"
+?assert body "5.5"
+
+# Public endpoint should list all items regardless of owner
+GET /api/noauth/items/
+?assert status 200
+?assert body "Test Widget"
