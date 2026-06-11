@@ -10,6 +10,7 @@ A type-safe, validated Go web backend framework that catches errors at startup, 
 - **Built-in auth** - Session management, scopes, and middleware ready to use
 - **Production-ready errors** - Structured errors with dev/prod modes and tracking IDs
 - **Testing-first** - Comprehensive testkit with database assertions for integration testing
+- **Built for AI agents** - First-class tooling for AI coding agents to test routes, inspect schemas, and verify changes without a running server (see [AI Agent Features](#ai-agent-features))
 
 ## Quick Start
 
@@ -767,6 +768,111 @@ app.Exec(t, "UPDATE items SET price = price * 1.1 WHERE owner_id = ?", 1)
 
 ---
 
+## AI Agent Features
+
+tog is designed to be operated by AI coding agents as well as humans. Agents work best with fast feedback loops, machine-readable output, and self-describing tools — so tog ships several features built explicitly for them. Everything below works from the command line with no running server and no browser.
+
+### agent-prompt - Self-Describing CLI
+
+Every command ships with documentation written for LLM consumption: explicit "when to use" / "when not to use" decision criteria, concrete examples, common pitfalls, and agent-specific tips.
+
+```bash
+go run . agent-prompt              # List all commands with one-line summaries
+go run . agent-prompt inlinetest   # Full documentation for one command
+go run . agent-prompt --all        # Dump all prompts (embed in CLAUDE.md or similar)
+```
+
+An agent that has never seen a tog application can bootstrap itself by reading these prompts instead of the source.
+
+### inlinetest - Verify Routes Without a Server
+
+Executes HTTP requests directly against the application's router using an in-memory SQLite database — no server process, no port, no cleanup. An agent can verify a route change in a single command, including authenticated flows:
+
+```bash
+# Creates the user, the session, runs migrations, executes the request
+go run . inlinetest --with-user=test@example.com --with-session /auth/whoami
+```
+
+Output is deterministic and easy to parse (`METHOD PATH -> STATUS` followed by the body). Test files support assertions for repeatable verification:
+
+```
+POST /api/items {"name":"Widget","price":9.99}
+?assert status 201
+?assert json .name "Widget"
+```
+
+```bash
+go run . inlinetest -f tests/items.txt -q   # -q prints only failures
+```
+
+See [inlinetest](#inlinetest---ai-agent-testing-interface) under CLI Tools for the full flag reference.
+
+### jstest - Scripted Multi-Step API Tests
+
+For workflows that need control flow — loops, conditionals, captured IDs — agents can write JavaScript test scripts instead of chaining shell commands. Scripts run against an in-memory database with a synchronous HTTP client:
+
+```javascript
+client.createUser("test@example.com")
+client.login("test@example.com")
+
+var resp = client.post("/api/items", {name: "Widget", price: 9.99})
+assertStatus(resp, 201)
+var id = resp.json().id
+
+resp = client.delete("/api/items/" + id)
+assertStatus(resp, 200)
+```
+
+```bash
+go run . jstest tests/items_test.js       # Fresh in-memory DB per script
+go run . jstest --db tests/integration.js # Or against the real database
+```
+
+The API surface is small and predictable: `client.get/post/put/delete`, `client.createUser/login/loginWithApiKey/logout`, and assertion helpers (`assertStatus`, `assertJSON`, `assertContains`, `assertEqual`). Tests fail fast on the first failed assertion.
+
+### Machine-Readable Introspection
+
+Agents shouldn't have to grep source code to learn what an application looks like. Every structural fact is available as JSON or structured text:
+
+| Command | What it answers |
+|---------|----------------|
+| `go run . routes` (also `-md`) | What endpoints exist, and which require auth? |
+| `go run . schema` | What tables, columns, foreign keys, and indexes exist? |
+| `go run . openapi` | What are the request/response schemas? (full JSON Schema for typed routes) |
+| `go run . verify` | Are all registered SQL queries valid against the current schema? |
+| `go run . findqueries` | Is any SQL bypassing query registration? (exit code 1 if so) |
+| `go run . env` | How is the environment and database configured? |
+
+SQL timing output goes to stderr, so stdout is always clean for piping:
+
+```bash
+go run . schema 2>/dev/null | jq '.databases.primary.tables[].name'
+```
+
+The same information is served over HTTP for running applications: `/docs/routes/json`, `/docs/queries/json`, and `/schema/{db}/{table}`.
+
+### Dev Routes - Instant Authentication
+
+With `ENVIRONMENT=dev`, the optional dev routes let an agent (or a test script) obtain an authenticated session with a single GET request — no password setup, no email verification:
+
+```
+GET /dev/create_and_assume?email=test@example.com   # Create user + session cookie
+GET /dev/assume?email=existing@example.com          # Session for an existing user
+GET /dev/schema/{db}/{table}                        # Schema inspection over HTTP
+```
+
+These are mounted explicitly and only in dev environments — they never exist in production builds unless you mount them.
+
+### CLAUDE_TEMPLATE.md - Project Onboarding for Agents
+
+The repo includes [CLAUDE_TEMPLATE.md](CLAUDE_TEMPLATE.md), a ready-made `CLAUDE.md` for projects built on tog. Copy it into your project and customize it; it teaches an agent the development commands, the inlinetest/jstest workflows, and the typed-route conventions so it can work productively from the first prompt.
+
+### Startup Validation as a Feedback Loop
+
+Because every query is verified against the schema at startup (and via `go run . verify`), an agent gets immediate, specific errors after changing SQL or migrations — "column X does not exist in table Y" at compile-and-verify time, instead of a runtime 500 discovered through testing.
+
+---
+
 ## CLI Tools
 
 ### verify - Query Validation
@@ -784,8 +890,10 @@ Lists all registered routes with auth status:
 ```bash
 go run . routes          # Table format
 go run . routes -md      # Markdown
-go run . routes -json    # JSON
+go run . routes -all     # Include middleware internal routes
 ```
+
+JSON route data is available from a running application at `/docs/routes/json`.
 
 Output:
 ```
